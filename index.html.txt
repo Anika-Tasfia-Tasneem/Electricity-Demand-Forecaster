@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grid Pulse – Electricity Demand Forecaster</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#0d1824;--panel:#142435;--panel2:#1a2e43;--line:#2a4259;--tx:#e8f0f7;--mut:#8ca3b8;--act:#f6b43c;--fc:#52c7ff;--band:rgba(82,199,255,.16);--ok:#4fd6a0;--bad:#ff7a6b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef3f8;--panel:#fff;--panel2:#f1f6fb;--line:#d3dfeb;--tx:#12202e;--mut:#5d7388;--act:#d98a00;--fc:#0a84d0;--band:rgba(10,132,208,.14);--ok:#0f9d6b;--bad:#d9453a}}
+:root[data-theme="light"]{--bg:#eef3f8;--panel:#fff;--panel2:#f1f6fb;--line:#d3dfeb;--tx:#12202e;--mut:#5d7388;--act:#d98a00;--fc:#0a84d0;--band:rgba(10,132,208,.14);--ok:#0f9d6b;--bad:#d9453a}
+:root[data-theme="dark"]{--bg:#0d1824;--panel:#142435;--panel2:#1a2e43;--line:#2a4259;--tx:#e8f0f7;--mut:#8ca3b8;--act:#f6b43c;--fc:#52c7ff;--band:rgba(82,199,255,.16);--ok:#4fd6a0;--bad:#ff7a6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Bricolage Grotesque",system-ui,-apple-system,Segoe UI,sans-serif;transition:background .5s,color .5s;min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:18px}
+h1{font-size:clamp(26px,4.4vw,44px);font-weight:800;margin:0;letter-spacing:-.02em;line-height:1}
+h1 small{display:block;font-size:14px;font-weight:400;color:var(--mut);margin-top:8px;letter-spacing:0}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.live{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);animation:pulse 1.4s infinite}
+.paused .dot{background:var(--mut);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,214,160,.7)}100%{box-shadow:0 0 0 10px rgba(79,214,160,0)}}
+button,.btn{font:inherit;font-size:13px;color:var(--tx);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:8px 16px;cursor:pointer;transition:transform .2s,background .25s,border-color .25s}
+button:hover,.btn:hover{transform:translateY(-2px);border-color:var(--fc)}
+button:active{transform:scale(.96)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--fc);outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;transition:background .5s,border-color .5s}
+.kpi .l{color:var(--mut);font-size:13px}
+.kpi .v{font-size:34px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.kpi .v i{font-style:normal;font-size:14px;font-weight:400;color:var(--mut);margin-left:4px}
+.kpi .s{font-size:12px;color:var(--mut)}
+.kpi:nth-child(1) .v{color:var(--act)}.kpi:nth-child(2) .v{color:var(--fc)}
+.main{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(260px,1fr);gap:12px;margin-bottom:12px}
+@media(max-width:860px){.main{grid-template-columns:1fr}}
+.chartHead{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:14px}
+.key{display:flex;gap:14px;color:var(--mut);font-size:12px;align-items:center}
+.key b{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.cv{position:relative;height:340px}
+canvas{width:100%;height:100%;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;opacity:0;transition:opacity .15s;white-space:nowrap}
+.ctl label{display:block;font-size:13px;color:var(--mut);margin:14px 0 6px;display:flex;justify-content:space-between}
+.ctl label span{color:var(--tx);font-weight:600}
+.ctl label:first-child{margin-top:0}
+input[type=range]{width:100%;accent-color:var(--fc)}
+select{width:100%;font:inherit;font-size:14px;background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px}
+.row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.row>*{flex:1;text-align:center}
+.two{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:12px}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+h2{font-size:15px;margin:0 0 4px}
+.hint{font-size:12px;color:var(--mut);margin:0 0 12px}
+.heat{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;overflow-x:auto;min-width:0}
+.heat div{aspect-ratio:1;border-radius:4px;min-width:11px;transition:transform .2s,background .6s}
+.heat .lb{aspect-ratio:auto;font-size:10px;color:var(--mut);display:flex;align-items:center}
+.heat .c:hover{transform:scale(1.5);z-index:2}
+.heatWrap{overflow-x:auto}
+.feed{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:hidden}
+.item{display:flex;justify-content:space-between;font-size:13px;padding:8px 10px;border-radius:10px;background:var(--panel2);animation:slide .5s cubic-bezier(.2,.8,.2,1)}
+.item em{font-style:normal;font-weight:600}
+@keyframes slide{from{opacity:0;transform:translateX(-24px) scale(.97)}to{opacity:1;transform:none}}
+.in{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.up{color:var(--bad)}.dn{color:var(--ok)}
+footer{margin-top:16px;font-size:12px;color:var(--mut);line-height:1.5}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="in">
+  <h1>Grid Pulse<small>Hourly electricity demand forecaster for Bangladesh · simulated data</small></h1>
+  <div class="bar">
+    <div class="live" id="live"><span class="dot"></span><span id="clock">--</span></div>
+    <button id="play">Pause</button>
+    <button id="theme">Theme</button>
+  </div>
+</header>
+
+<section class="kpis">
+  <div class="card kpi in" style="animation-delay:.1s"><div class="l">Demand now</div><div class="v"><span id="k1">0</span><i>MW</i></div><div class="s" id="k1s">&nbsp;</div></div>
+  <div class="card kpi in" style="animation-delay:.2s"><div class="l">Next hour forecast</div><div class="v"><span id="k2">0</span><i>MW</i></div><div class="s" id="k2s">&nbsp;</div></div>
+  <div class="card kpi in" style="animation-delay:.3s"><div class="l">Forecast peak</div><div class="v"><span id="k3">0</span><i>MW</i></div><div class="s" id="k3s">&nbsp;</div></div>
+  <div class="card kpi in" style="animation-delay:.4s"><div class="l">Error, last 24h (MAPE)</div><div class="v"><span id="k4">0</span><i>%</i></div><div class="s" id="k4s">&nbsp;</div></div>
+</section>
+
+<section class="main">
+  <div class="card in" style="animation-delay:.5s">
+    <div class="chartHead"><b>Actual vs forecast</b>
+      <div class="key"><span><b style="background:var(--act)"></b>Actual</span><span><b style="background:var(--fc)"></b>Forecast</span><span><b style="background:var(--band);height:10px"></b>80% range</span></div></div>
+    <div class="cv" id="cv"><canvas id="cnv"></canvas><div class="tip" id="tip"></div></div>
+  </div>
+  <div class="card ctl in" style="animation-delay:.6s">
+    <label>Model</label>
+    <select id="model"><option value="adapt">Adaptive weekly pattern</option><option value="how">Weekly pattern average</option><option value="naive">Same hour last week</option></select>
+    <label>Forecast horizon <span id="hv">24 h</span></label>
+    <input type="range" id="hor" min="6" max="48" value="24">
+    <label>Simulation speed <span id="sv">1×</span></label>
+    <input type="range" id="spd" min="1" max="6" value="2">
+    <label>What-if temperature <span id="tv">+0 °C</span></label>
+    <input type="range" id="tmp" min="-6" max="8" value="0">
+    <div class="row"><button id="csvBtn">Load CSV</button><button id="regen">New data</button></div>
+    <input type="file" id="csv" accept=".csv,.txt" hidden>
+  </div>
+</section>
+
+<section class="two">
+  <div class="card in" style="animation-delay:.7s">
+    <h2>Typical week</h2><p class="hint">Average demand by hour and weekday. Hover a cell for the value.</p>
+    <div class="heatWrap"><div class="heat" id="heat"></div></div>
+  </div>
+  <div class="card in" style="animation-delay:.8s">
+    <h2>Live readings</h2><p class="hint">Each new hour arrives with its forecast error.</p>
+    <div class="feed" id="feed"></div>
+  </div>
+</section>
+<footer>All values are simulated to show how the dashboard works. To use real data, tap Load CSV and choose a file with one hourly demand value per row (for example from the UCI Bangladesh PGCB dataset, exported as CSV). The what-if slider applies a simple temperature sensitivity and is illustrative only.</footer>
+</div>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var DAYS=['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
+var seed=7;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+function gauss(){return (rnd()+rnd()+rnd()+rnd()-2)*1.7}
+var data=[],T=0,t0=new Date(),playing=true,speed=2,H=24,model='adapt',tempAdj=0,prog=1,hover=-1;
+
+function gen(n){
+  seed=Math.floor(Math.random()*9999)+1;var d=[];
+  for(var i=0;i<n;i++){
+    var h=i%24,dow=Math.floor(i/24)%7;
+    var shape=.82+.1*Math.exp(-Math.pow(h-13,2)/20)+.34*Math.exp(-Math.pow(h-20,2)/7)-.1*Math.exp(-Math.pow(h-4,2)/8);
+    var wk=dow===6?.9:(dow===5?.97:1);
+    d.push(Math.round(11200*shape*wk*(1+gauss()*.012)));
+  }
+  return d;
+}
+function stamp(i){var s=new Date(t0.getTime()+(i-T)*36e5);return s}
+function fmtH(i){var s=stamp(i);return DAYS[(i%168<0?0:Math.floor(i/24)%7)]+' '+('0'+s.getHours()).slice(-2)+':00'}
+function hourOf(i){return i%24}
+
+/* forecasting: uses only values at or before origin */
+function level(origin){
+  if(model!=='adapt')return 1;var a=0,b=0;
+  for(var k=0;k<24;k++){var i=origin-k,p=base(i,origin-24,true);if(p){a+=data[i];b+=p}}
+  return b?Math.max(.8,Math.min(1.2,a/b)):1;
+}
+function base(idx,origin,raw){
+  if(model==='naive'&&!raw){var j=idx-168;return j<=origin&&j>=0?data[j]:null}
+  var s=0,c=0;for(var k=1;k<=4;k++){var j2=idx-168*k;if(j2<=origin&&j2>=0){s+=data[j2];c++}}
+  return c?s/c:null;
+}
+function predict(idx,origin){
+  var b=base(idx,origin);if(b===null)return null;
+  return b*(model==='adapt'?level(origin):1);
+}
+function metrics(){
+  var e=0,n=0,sq=0;
+  for(var i=T-23;i<=T;i++){var p=predict(i,i-1);if(p){var r=(data[i]-p);e+=Math.abs(r)/data[i];sq+=r*r;n++}}
+  return {mape:n?e/n*100:0,sd:n?Math.sqrt(sq/n):300};
+}
+function forecast(){
+  var m=metrics(),f=[],adj=1+.018*tempAdj;
+  for(var h=1;h<=H;h++){
+    var p=predict(T+h,T);if(p===null)p=data[T];
+    p*=adj;var w=m.sd*1.28*Math.sqrt(1+h/12);
+    f.push({i:T+h,v:p,lo:p-w,hi:p+w});
+  }
+  return {f:f,m:m};
+}
+
+/* count-up */
+var shown={};
+function count(id,to,dec){
+  var el=$(id),from=shown[id]||0,st=performance.now();shown[id]=to;
+  function step(n){var p=Math.min(1,(n-st)/600),e=1-Math.pow(1-p,3),v=from+(to-from)*e;
+    el.textContent=dec?v.toFixed(dec):Math.round(v).toLocaleString();if(p<1)requestAnimationFrame(step)}
+  requestAnimationFrame(step);
+}
+
+/* chart */
+var cnv=$('cnv'),ctx=cnv.getContext('2d'),dpr=1,W=0,Hh=0,cur=null;
+function size(){var r=$('cv').getBoundingClientRect();dpr=window.devicePixelRatio||1;W=r.width;Hh=r.height;cnv.width=W*dpr;cnv.height=Hh*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function draw(){
+  if(!cur)return;ctx.clearRect(0,0,W,Hh);
+  var back=72,pad={l:48,r:12,t:12,b:26},x0=T-back,x1=T+H;
+  var vals=[];for(var i=x0;i<=T;i++)if(i>=0)vals.push(data[i]);
+  cur.f.forEach(function(p){vals.push(p.lo,p.hi)});
+  var mn=Math.floor(Math.min.apply(0,vals)/500)*500-500,mx=Math.ceil(Math.max.apply(0,vals)/500)*500+500;
+  var X=function(i){return pad.l+(i-x0)/(x1-x0)*(W-pad.l-pad.r)},Y=function(v){return pad.t+(1-(v-mn)/(mx-mn))*(Hh-pad.t-pad.b)};
+  var line=css('--line'),mut=css('--mut'),act=css('--act'),fc=css('--fc'),band=css('--band');
+  ctx.font='11px system-ui,sans-serif';ctx.fillStyle=mut;ctx.strokeStyle=line;ctx.lineWidth=1;
+  for(var g=mn;g<=mx;g+=Math.max(500,Math.round((mx-mn)/5/500)*500)){ctx.beginPath();ctx.moveTo(pad.l,Y(g));ctx.lineTo(W-pad.r,Y(g));ctx.stroke();ctx.textAlign='right';ctx.fillText(g.toLocaleString(),pad.l-6,Y(g)+4)}
+  ctx.textAlign='center';
+  for(var i2=Math.ceil(x0/12)*12;i2<=x1;i2+=12){var hh=hourOf(i2);ctx.fillText(('0'+hh).slice(-2)+':00',X(i2),Hh-8)}
+  /* forecast region shade + sweep reveal */
+  var rx=X(T),reveal=rx+(X(x1)-rx)*prog;
+  ctx.save();ctx.beginPath();ctx.rect(rx,0,reveal-rx,Hh);ctx.clip();
+  ctx.beginPath();cur.f.forEach(function(p,k){k?ctx.lineTo(X(p.i),Y(p.hi)):ctx.moveTo(X(p.i),Y(p.hi))});
+  for(var k2=cur.f.length-1;k2>=0;k2--)ctx.lineTo(X(cur.f[k2].i),Y(cur.f[k2].lo));
+  ctx.closePath();ctx.fillStyle=band;ctx.fill();
+  ctx.beginPath();ctx.moveTo(X(T),Y(data[T]));cur.f.forEach(function(p){ctx.lineTo(X(p.i),Y(p.v))});
+  ctx.strokeStyle=fc;ctx.lineWidth=2.5;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  /* actual */
+  ctx.beginPath();var st=false;for(var i3=Math.max(0,x0);i3<=T;i3++){st?ctx.lineTo(X(i3),Y(data[i3])):ctx.moveTo(X(i3),Y(data[i3]));st=true}
+  ctx.strokeStyle=act;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
+  /* now marker */
+  var pulse=6+3*Math.sin(performance.now()/300);
+  ctx.strokeStyle=line;ctx.beginPath();ctx.moveTo(rx,pad.t);ctx.lineTo(rx,Hh-pad.b);ctx.stroke();
+  ctx.fillStyle=act;ctx.globalAlpha=.25;ctx.beginPath();ctx.arc(rx,Y(data[T]),pulse+4,0,7);ctx.fill();ctx.globalAlpha=1;
+  ctx.beginPath();ctx.arc(rx,Y(data[T]),5,0,7);ctx.fill();
+  ctx.fillStyle=mut;ctx.textAlign='left';ctx.fillText('now',rx+6,pad.t+10);
+  /* hover */
+  if(hover>=x0&&hover<=x1){
+    var hx=X(hover);ctx.strokeStyle=mut;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(hx,pad.t);ctx.lineTo(hx,Hh-pad.b);ctx.stroke();ctx.setLineDash([]);
+    var isF=hover>T,v=isF?cur.f[hover-T-1].v:data[hover];
+    ctx.fillStyle=isF?fc:act;ctx.beginPath();ctx.arc(hx,Y(v),5,0,7);ctx.fill();
+    var tip=$('tip');tip.style.opacity=1;tip.style.left=Math.min(W-150,Math.max(0,hx+10))+'px';tip.style.top='10px';
+    tip.innerHTML='<b>'+fmtH(hover)+'</b><br>'+(isF?'Forecast ':'Actual ')+Math.round(v).toLocaleString()+' MW';
+  }else $('tip').style.opacity=0;
+}
+cnv.addEventListener('mousemove',function(e){var r=cnv.getBoundingClientRect(),x=e.clientX-r.left,back=72,x0=T-back,x1=T+H;hover=Math.round(x0+(x-48)/(r.width-60)*(x1-x0))});
+cnv.addEventListener('touchmove',function(e){var t=e.touches[0],r=cnv.getBoundingClientRect(),x=t.clientX-r.left;hover=Math.round(T-72+(x-48)/(r.width-60)*(72+H))},{passive:true});
+cnv.addEventListener('mouseleave',function(){hover=-1});
+(function loop(){if(prog<1)prog=Math.min(1,prog+.025);draw();requestAnimationFrame(loop)})();
+
+/* heatmap */
+function buildHeat(){
+  var el=$('heat'),sum=[],cnt=[];el.innerHTML='';
+  for(var i=0;i<data.length;i++){var k=Math.floor(i/24)%7*24+i%24;sum[k]=(sum[k]||0)+data[i];cnt[k]=(cnt[k]||0)+1}
+  var avg=sum.map(function(s,k){return s/cnt[k]}),mn=Math.min.apply(0,avg),mx=Math.max.apply(0,avg);
+  el.appendChild(document.createElement('div')).className='lb';
+  for(var h=0;h<24;h++){var l=document.createElement('div');l.className='lb';l.style.justifyContent='center';l.textContent=h%6===0?h:'';el.appendChild(l)}
+  for(var d=0;d<7;d++){
+    var lb=document.createElement('div');lb.className='lb';lb.textContent=DAYS[d];el.appendChild(lb);
+    for(var h2=0;h2<24;h2++){
+      var v=avg[d*24+h2],t=(v-mn)/(mx-mn||1),c=document.createElement('div');c.className='c';
+      c.style.background='hsl('+(210-t*170)+',80%,'+(30+t*30)+'%)';c.style.opacity=0;
+      c.title=DAYS[d]+' '+h2+':00 · '+Math.round(v).toLocaleString()+' MW';
+      c.style.transition='opacity .5s '+((d*24+h2)*6)+'ms,transform .2s';
+      el.appendChild(c);(function(c){setTimeout(function(){c.style.opacity=1},30)})(c);
+    }
+  }
+}
+
+/* update ui */
+function refresh(replay){
+  cur=forecast();if(replay)prog=0;
+  var f=cur.f,pk=f.reduce(function(a,b){return b.v>a.v?b:a});
+  count('k1',data[T]);count('k2',f[0].v);count('k3',pk.v);count('k4',cur.m.mape,1);
+  var d1=data[T]-data[T-1];
+  $('k1s').innerHTML='<span class="'+(d1>0?'up':'dn')+'">'+(d1>0?'▲ ':'▼ ')+Math.abs(Math.round(d1))+' MW</span> vs previous hour';
+  $('k2s').textContent='for '+fmtH(T+1);
+  $('k3s').textContent='expected at '+fmtH(pk.i);
+  $('k4s').textContent=cur.m.mape<2?'Excellent fit':cur.m.mape<4?'Good fit':'Pattern shifting';
+  $('clock').textContent=fmtH(T);
+}
+function addFeed(){
+  var p=predict(T,T-1),err=p?(data[T]-p)/data[T]*100:0,div=document.createElement('div');
+  div.className='item';div.innerHTML='<span>'+fmtH(T)+'</span><span><em>'+data[T].toLocaleString()+' MW</em> <span class="'+(Math.abs(err)>3?'up':'dn')+'">'+(err>=0?'+':'')+err.toFixed(1)+'%</span></span>';
+  var fd=$('feed');fd.insertBefore(div,fd.firstChild);while(fd.children.length>6)fd.removeChild(fd.lastChild);
+}
+function tick(){
+  if(!playing)return;
+  var i=T+1,h=i%24,dow=Math.floor(i/24)%7;
+  var shape=.82+.1*Math.exp(-Math.pow(h-13,2)/20)+.34*Math.exp(-Math.pow(h-20,2)/7)-.1*Math.exp(-Math.pow(h-4,2)/8);
+  var wk=dow===6?.9:(dow===5?.97:1);
+  var surge=Math.sin(i/40)*.03;
+  data[i]=Math.round(11200*shape*wk*(1+surge+gauss()*.012));T=i;
+  addFeed();refresh(false);
+}
+var timer;function schedule(){clearInterval(timer);timer=setInterval(tick,2400/speed)}
+
+function init(arr){
+  data=arr;T=Math.min(data.length-1,Math.max(200,data.length-1));
+  if(arr.length<250){alert('Need at least 250 hourly values (about 10 days).');return false}
+  $('feed').innerHTML='';buildHeat();refresh(true);return true;
+}
+/* controls */
+$('play').onclick=function(){playing=!playing;this.textContent=playing?'Pause':'Resume';$('live').classList.toggle('paused',!playing)};
+$('theme').onclick=function(){var r=document.documentElement,dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#0d1824';r.setAttribute('data-theme',dark?'light':'dark')};
+$('model').onchange=function(){model=this.value;refresh(true)};
+$('hor').oninput=function(){H=+this.value;$('hv').textContent=H+' h';refresh(true)};
+$('spd').oninput=function(){speed=+this.value;$('sv').textContent=speed+'×';schedule()};
+$('tmp').oninput=function(){tempAdj=+this.value;$('tv').textContent=(tempAdj>=0?'+':'')+tempAdj+' °C';refresh(false)};
+$('regen').onclick=function(){init(gen(24*35))};
+$('csvBtn').onclick=function(){$('csv').click()};
+$('csv').onchange=function(){
+  var f=this.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){
+    var rows=String(r.result).split(/\r?\n/).map(function(l){return l.split(',')});
+    var head=rows[0].map(function(s){return s.toLowerCase()}),col=-1;
+    head.forEach(function(h,k){if(col<0&&/demand|load|mw/.test(h))col=k});
+    var out=[];rows.forEach(function(r2,k){var c=col<0?r2.length-1:col,v=parseFloat(r2[c]);if(!isNaN(v)&&(k>0||col<0))out.push(v)});
+    if(!init(out.slice(-24*60)))return;
+  };r.readAsText(f);
+};
+window.addEventListener('resize',size);
+init(gen(24*35));size();schedule();
+})();
+</script>
+</body>
+</html>
